@@ -2,12 +2,17 @@ import gym
 from gym import wrappers
 import os
 import numpy as np
+from taxi_env import *
+from taxi_env_L import *
 
 import matplotlib.pyplot as plt
 
 # Environment initialization
-folder = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'q_learning')
-env = wrappers.Monitor(gym.make('Taxi-v3'), folder, force=True)
+# folder = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'q_learning')
+# env = wrappers.Monitor(gym.make('Taxi-v3'), folder, force=True)
+# env = gym.make('Taxi-v3')
+# env = TaxiEnv()
+env = TaxiEnv_L()
 
 # Q and rewards
 Q = np.zeros((env.observation_space.n, env.action_space.n))
@@ -17,7 +22,8 @@ iterations = []
 # Parameters
 alpha = 0.85
 discount = 0.99
-episodes = 1000
+episodes = 1500
+
 
 # Episodes
 for episode in range(episodes):
@@ -25,7 +31,8 @@ for episode in range(episodes):
     state = env.reset()
     done = False
     t_reward = 0
-    max_steps = env.spec.tags.get('wrapper_config.TimeLimit.max_episode_steps')
+    max_steps = 200
+    # max_steps = env.spec.tags.get('wrapper_config.TimeLimit.max_episode_steps')
 
     # Run episode
     for i in range(max_steps):
