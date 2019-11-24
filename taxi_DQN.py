@@ -1,3 +1,5 @@
+import os
+os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 import gym
 import numpy as np
 import random
@@ -76,21 +78,20 @@ class DQN:
 
     
 if __name__ == "__main__":
-    # env     = gym.make("MountainCar-v0")
-    # env = gym.make('Taxi-v3')
+
     env = TaxiEnv()
     
     # env  = gym.make('MsPacman-ram-v0')
     gamma   = 0.9
     epsilon = .95
 
-    trials  = 100
+    episodes  = 2000
     trial_len = 200
     # updateTargetNetwork = 1000
     dqn_agent = DQN(env=env)
     rewards = []
 
-    for trial in range(trials):
+    for trial in range(episodes):
         # cur_state = env.reset().reshape(1,2)
         cur_state = np.array(list(env.decode(env.reset())))
         
@@ -113,13 +114,15 @@ if __name__ == "__main__":
         rewards.append(trial_reward)
 
         if step >= 199:
-            print("Failed to complete in trial {}".format(trial))
+            if trial % 100 == 0:
+                print("Failed to complete in episode {}".format(trial))
             # if step % 10 == 0:
             #     dqn_agent.save_model("trial-{}.model".format(trial))
         else:
-            print("Completed in {} trials".format(trial))
-            # dqn_agent.save_model("success.model")
+            print("Completed in {} episode".format(trial))
+            dqn_agent.save_model("success.model")
             break
+
     def chunk_list(l, n):
         for i in range(0, len(l), n):
             yield l[i:i + n]
@@ -127,8 +130,9 @@ if __name__ == "__main__":
     size = 5
     chunks = list(chunk_list(rewards, size))
     averages = [sum(chunk) / len(chunk) for chunk in chunks]
-
+    plt.Figure(figsize=(15,10))
     plt.plot(range(0, len(rewards), size), averages)
     plt.xlabel('Episode')
     plt.ylabel('Average Reward')
     plt.show()
+    plt.savefig('reward_curve.png')
