@@ -1,5 +1,5 @@
 # In this variation of taxi environment, The state would be represented 
-# as an array of shape [taxi_row, taxi_col, pass_loc, dest_idx]
+# as an array of shape [taxi_row, taxi_col, pass_loc, dest_idx, North, South, East, West]
 
 import sys
 from contextlib import closing
@@ -159,7 +159,7 @@ class TaxiEnv(discrete.DiscreteEnv):
         discrete.DiscreteEnv.__init__(
             self, num_states, num_actions, P, initial_state_distrib)
 
-        self.observation_space = spaces.MultiDiscrete([num_rows,num_columns,len(locs)+1,len(locs)])
+        self.observation_space = spaces.MultiDiscrete([num_rows,num_columns,len(locs)+1,len(locs),2,2,2,2])
     def encode(self, taxi_row, taxi_col, pass_loc, dest_idx):
         # (5) 5, 5, 4
         i = taxi_row
@@ -187,6 +187,7 @@ class TaxiEnv(discrete.DiscreteEnv):
         self.s = categorical_sample(self.isd, self.np_random)
         self.lastaction = None
         s_decoded = list(self.decode(self.s))
+        s_decoded.extend(self.surroundigs[self.s,:])
         return s_decoded
 
     def step(self, a):
@@ -196,6 +197,7 @@ class TaxiEnv(discrete.DiscreteEnv):
         self.s = s
         self.lastaction = a
         s_decoded = list(self.decode(s))
+        s_decoded.extend(self.surroundigs[self.s,:])
         return (s_decoded, r, d, {"prob" : p})
 
     def render(self, mode='human'):
