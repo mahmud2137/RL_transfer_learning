@@ -1,9 +1,22 @@
+# In this variation of taxi environment, The state would be represented 
+# as an array of shape [taxi_row, taxi_col, pass_loc, dest_idx, North, South, East, West]
+
 import sys
 from contextlib import closing
 from six import StringIO
-from gym import utils
+from gym import utils, spaces
 from gym.envs.toy_text import discrete
 import numpy as np
+
+
+def categorical_sample(prob_n, np_random):
+    """
+    Sample from categorical distribution
+    Each row specifies class probabilities
+    """
+    prob_n = np.asarray(prob_n)
+    csprob_n = np.cumsum(prob_n)
+    return (csprob_n > np_random.rand()).argmax()
 
 MAP = [
     "+-------------------+",
@@ -80,6 +93,7 @@ class TaxiEnv(discrete.DiscreteEnv):
         max_col = num_columns - 1
         initial_state_distrib = np.zeros(num_states)
         num_actions = 6
+        self.surroundigs = np.zeros((num_states, 4))
         P = {state: {action: []
                      for action in range(num_actions)} for state in range(num_states)}
         for row in range(num_rows):
@@ -87,6 +101,25 @@ class TaxiEnv(discrete.DiscreteEnv):
                 for pass_idx in range(len(locs) + 1):  # +1 for being inside taxi
                     for dest_idx in range(len(locs)):
                         state = self.encode(row, col, pass_idx, dest_idx)
+                        #Detecting surrounding obstracles and adding to the vector
+                        #1 means agent cannot go that direction
+                        #matrix is in the order of [north, south, east, west]
+                        #Checking North:
+                        if row==0:
+                            self.surroundigs[state,0] = 1
+
+                        #Checking South:
+                        if row==max_row:
+                            self.surroundigs[state,1] = 1
+                        
+                        #Checking East
+                        if self.desc[1 + row, 2 * col + 2] == b"|":
+                            self.surroundigs[state,2] = 1
+
+                        #Checking West
+                        if self.desc[1 + row, 2 * col] == b"|":
+                            self.surroundigs[state,3] = 1
+
                         if pass_idx < 4 and pass_idx != dest_idx:
                             initial_state_distrib[state] += 1
                         for action in range(num_actions):
@@ -125,7 +158,7 @@ class TaxiEnv(discrete.DiscreteEnv):
         initial_state_distrib /= initial_state_distrib.sum()
         discrete.DiscreteEnv.__init__(
             self, num_states, num_actions, P, initial_state_distrib)
-
+        self.observation_space = spaces.MultiDiscrete([num_rows,num_columns,len(locs)+1,len(locs),2,2,2,2])
     def encode(self, taxi_row, taxi_col, pass_loc, dest_idx):
         # (10) 10, 5, 4
         i = taxi_row
@@ -148,6 +181,23 @@ class TaxiEnv(discrete.DiscreteEnv):
         out.append(i)
         assert 0 <= i < 10
         return reversed(out)
+
+    def reset(self):
+        self.s = categorical_sample(self.isd, self.np_random)
+        self.lastaction = None
+        s_decoded = list(self.decode(self.s))
+        s_decoded.extend(self.surroundigs[self.s,:])
+        return s_decoded
+
+    def step(self, a):
+        transitions = self.P[self.s][a]
+        i = categorical_sample([t[0] for t in transitions], self.np_random)
+        p, s, r, d= transitions[i]
+        self.s = s
+        self.lastaction = a
+        s_decoded = list(self.decode(s))
+        s_decoded.extend(self.surroundigs[self.s,:])
+        return (s_decoded, r, d, {"prob" : p})
 
     def render(self, mode='human'):
         outfile = StringIO() if mode == 'ansi' else sys.stdout
