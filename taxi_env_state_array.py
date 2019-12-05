@@ -5,7 +5,6 @@ import sys
 from contextlib import closing
 from six import StringIO
 from gym import utils, spaces
-
 from gym.envs.toy_text import discrete
 # import discrete
 import numpy as np
@@ -79,11 +78,12 @@ class TaxiEnv(discrete.DiscreteEnv):
     """
     metadata = {'render.modes': ['human', 'ansi']}
 
-    def __init__(self):
+    def __init__(self, max_step=50):
         self.desc = np.asarray(MAP, dtype='c')
 
         self.locs = locs = [(0,0), (0,4), (4,0), (4,3)]
-
+        self.i_step = 0
+        self.max_step = max_step
         num_states = 500
         num_rows = 5
         num_columns = 5
@@ -186,6 +186,7 @@ class TaxiEnv(discrete.DiscreteEnv):
     def reset(self):
         self.s = categorical_sample(self.isd, self.np_random)
         self.lastaction = None
+        self.i_step = 0
         s_decoded = list(self.decode(self.s))
         s_decoded.extend(self.surroundigs[self.s,:])
         return s_decoded
@@ -194,6 +195,9 @@ class TaxiEnv(discrete.DiscreteEnv):
         transitions = self.P[self.s][a]
         i = categorical_sample([t[0] for t in transitions], self.np_random)
         p, s, r, d= transitions[i]
+        self.i_step += 1  #incrementing current step
+        if self.i_step > self.max_step:
+            d = True
         self.s = s
         self.lastaction = a
         s_decoded = list(self.decode(s))
