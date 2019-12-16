@@ -5,6 +5,18 @@ from gym import utils
 from gym.envs.toy_text import discrete
 import numpy as np
 
+
+def categorical_sample(prob_n, np_random):
+    """
+    Sample from categorical distribution
+    Each row specifies class probabilities
+    """
+    prob_n = np.asarray(prob_n)
+    csprob_n = np.cumsum(prob_n)
+    return (csprob_n > np_random.rand()).argmax()
+
+
+
 MAP = [
     "+-------------------+",
     "|R: | : : : | : : :G|",
@@ -68,11 +80,12 @@ class TaxiEnv(discrete.DiscreteEnv):
     """
     metadata = {'render.modes': ['human', 'ansi']}
 
-    def __init__(self):
+    def __init__(self, max_step = 50):
         self.desc = np.asarray(MAP, dtype='c')
 
         self.locs = locs = [(0,0), (0,9), (9,0), (9,7)]
-
+        self.i_step = 0
+        self.max_step = max_step
         num_states = 2000
         num_rows = 10
         num_columns = 10
@@ -125,6 +138,23 @@ class TaxiEnv(discrete.DiscreteEnv):
         initial_state_distrib /= initial_state_distrib.sum()
         discrete.DiscreteEnv.__init__(
             self, num_states, num_actions, P, initial_state_distrib)
+
+    def reset(self):
+        self.s = categorical_sample(self.isd, self.np_random)
+        self.lastaction = None
+        self.i_step = 0
+        return self.s
+
+    def step(self, a):
+        transitions = self.P[self.s][a]
+        i = categorical_sample([t[0] for t in transitions], self.np_random)
+        p, s, r, d= transitions[i]
+        self.i_step += 1  #incrementing current step
+        if self.i_step > self.max_step:
+            d = True
+        self.s = s
+        self.lastaction = a
+        return (s, r, d, {"prob" : p})
 
     def encode(self, taxi_row, taxi_col, pass_loc, dest_idx):
         # (10) 10, 5, 4
